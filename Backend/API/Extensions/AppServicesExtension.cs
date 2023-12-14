@@ -3,7 +3,13 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using APP.Auth;
+using APP.Repositories;
+using APP.UnitOfWork;
 using AspNetCoreRateLimit;
+using Domain.Entities;
+using Domain.Interfaces;
+using Domain.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Versioning;
@@ -49,12 +55,17 @@ namespace API.Extensions
             });
         }
 
-        public static void AddApplicationServices(this IServiceCollection services)
+        public static void AddApplicationServices(this IServiceCollection services, IConfiguration configuration)
         {
-            // services.AddScoped<IUnitOfWork, UnitOfWork>();
+            services.AddScoped<IUnitOfWork, UnitOfWork>();
+            services.AddScoped<IUserService, UserService>();
+            services.AddScoped<ITokenService, TokenService>();
+            services.AddScoped<IAuthService, AuthService>();
+            services.AddScoped<IUsuario, UsuarioRepository>();
 
             // Configuración de JWT
-            var key = Encoding.ASCII.GetBytes("cf83e1357eefb8bdf1542850d66d8007d620e4050b5715dc83f4a921d36ce9ce47d0d13c5d85f2b0f8318d2877eec2f63b931bd47417a81a538327af927da3e      "); // Cambia esto por tu clave secreta
+            var key = Encoding.ASCII.GetBytes(configuration["Jwt:Key"]);
+
             services.AddAuthentication(x =>
             {
                 x.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -72,6 +83,8 @@ namespace API.Extensions
                     ValidateAudience = false
                 };
             });
+
+            services.AddAuthorization();
         }
 
 

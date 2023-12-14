@@ -24,4 +24,6 @@ public partial class Usuario : BaseEntity
     public virtual Usuarioscompra Usuarioscompra { get; set; }
 
     public ICollection<Role> Rols { get; set; } = new HashSet<Role>();
+    public virtual ICollection<RefreshToken> RefreshTokens { get; set; } = new List<RefreshToken>();
+
 }

@@ -41,6 +41,8 @@ public partial class NikeContext : DbContext
 
     public virtual DbSet<Usuarioscompra> Usuarioscompras { get; set; }
 
+    public virtual DbSet<RefreshToken> RefreshTokens { get; set; }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder

@@ -1,68 +1,78 @@
-// using System;
-// using System.Collections.Generic;
-// using System.Linq;
-// using System.Threading.Tasks;
-// using Microsoft.AspNetCore.Mvc;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+using API.Dtos;
+using APP.Auth;
+using Domain.Interfaces;
+using Microsoft.AspNetCore.Identity.Data;
+using Microsoft.AspNetCore.Mvc;
 
-// namespace API.Controllers
-// {
-//     [ApiController]
-//     [Route("api/[controller]")]
-//     public class AuthController : ControllerBase
-//     {
-//         [AllowAnonymous]
-//         [HttpPost("login")]
-//         public IActionResult Login(string username, string password)
-//         {
-//             // Lógica de autenticación aquí...
+namespace API.Controllers
+{
+    [Route("api/[controller]")]
+    [ApiController]
+    public class AuthController : ControllerBase
+    {
+        private readonly IAuthService _authService;
+        private readonly IUserService _userService;
 
-//             var user = _userService.Authenticate(username, password);
+        public AuthController(IAuthService authService, IUserService userService)
+        {
+            _authService = authService;
+            _userService = userService;
+        }
 
-//             if (user == null)
-//                 return Unauthorized();
+        [HttpPost("authenticate")]
+        public async Task<IActionResult> AuthenticateAsync([FromBody] Dtos.LoginRequest request)
+        {
 
-//             var token = GenerateJwtToken(user);
-//             var refreshToken = GenerateRefreshToken(user.Id);
+            if (string.IsNullOrEmpty(request.Username) || string.IsNullOrEmpty(request.Password))
+            {
+                return BadRequest("Username y Password son requeridos.");
+            }
 
-//             return Ok(new { token, refreshToken });
-//         }
+            var authResult = await _authService.AuthenticateAsync(request.Username, request.Password);
 
-//         private string GenerateJwtToken(Usuario user)
-//         {
-//             var key = new SymmetricSecurityKey(Encoding.ASCII.GetBytes(_configuration["Jwt:Key"]));
-//             var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+            if (!authResult.Success)
+            {
+                return Unauthorized("Credenciales inválidas");
+            }
 
-//             var claims = new List<Claim>
-//     {
-//         new Claim(ClaimTypes.Name, user.NombreUsuario),
-//         new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
-//         // Puedes agregar más claims según la información del usuario o roles
-//     };
+            return Ok(new { Token = authResult.Token, RefreshToken = authResult.RefreshToken });
+        }
 
-//             var token = new JwtSecurityToken(
-//                 _configuration["Jwt:Issuer"],
-//                 _configuration["Jwt:Issuer"],
-//                 claims,
-//                 expires: DateTime.Now.AddHours(1),
-//                 signingCredentials: credentials
-//             );
+        [HttpGet("token-info")]
+        public IActionResult GetTokenInfo()
+        {
+            // Obtén información sobre el token actualmente autenticado
+            var username = User.Identity.Name; // Puedes acceder al nombre de usuario así si se incluyó en el token
 
-//             return new JwtSecurityTokenHandler().WriteToken(token);
-//         }
+            // Puedes incluir más detalles sobre el token si es necesario
+            var tokenInfo = new
+            {
+                Username = username,
+                ExpiryDate = User.FindFirst("exp")?.Value // Ejemplo de cómo obtener la fecha de vencimiento desde el token
+                // Agrega más información según tus necesidades
+            };
 
-//         private string GenerateRefreshToken(int userId)
-//         {
-//             var refreshToken = new RefreshToken
-//             {
-//                 UserId = userId,
-//                 Token = Guid.NewGuid().ToString(),
-//                 ExpiryDate = DateTime.Now.AddMonths(1) // Puedes ajustar el tiempo de expiración
-//             };
+            return Ok(tokenInfo);
+        }
 
-//             _userRepository.AddRefreshToken(refreshToken);
-//             _unitOfWork.SaveChanges();
+        [HttpPost("register")]
+        public async Task<IActionResult> RegisterAsync([FromBody] RegisterRequest request)
+        {
+            // Lógica para registrar al usuario en UserService
+            var registrationResult = await _userService.RegisterAsync(request.Username, request.Password);
 
-//             return refreshToken.Token;
-//         }
-//     }
-// }
+            if (!registrationResult.Success)
+            {
+                // Manejar el error de registro, por ejemplo, devolver un BadRequest
+                return BadRequest("Error al registrar al usuario.");
+            }
+
+            // El usuario se registró exitosamente
+            return Ok("Registro exitoso.");
+        }
+    }
+}

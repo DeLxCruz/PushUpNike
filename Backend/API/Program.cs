@@ -1,3 +1,6 @@
+using System.Reflection;
+using API.Extensions;
+using AspNetCoreRateLimit;
 using Microsoft.EntityFrameworkCore;
 using Persistence.Data;
 
@@ -7,6 +10,12 @@ var builder = WebApplication.CreateBuilder(args);
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+builder.Services.AddControllers();
+builder.Services.ConfigureRateLimiting();
+builder.Services.AddApplicationServices(builder.Configuration);
+builder.Services.AddAutoMapper(Assembly.GetEntryAssembly());
+builder.Services.ConfigureCors();
+builder.Services.ConfigureApiVersioning();
 
 builder.Services.AddDbContext<NikeContext>(options =>
 {
@@ -22,6 +31,14 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
+
+app.UseHttpsRedirection();
+app.UseIpRateLimiting();
+app.UseCors("CorsPolicy");
+
+app.UseAuthentication();
+app.UseAuthorization();
+app.MapControllers();
 
 // Va después del if (app.Environment.IsDevelopment())
 using (var scope = app.Services.CreateScope())
